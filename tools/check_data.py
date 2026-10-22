@@ -164,14 +164,17 @@ def check(root):
 
     d = load(root / "dams.json")
     ids = {}
-    if isinstance(d, dict):
+
+    def check_dams():                           # a return here skips only the dams part
+        if not isinstance(d, dict):
+            return
         n = len(d.get("id") or [])
         cols = {k: d.get(k) for k in ("id", "lat", "lon", "name_en", "name_zh")}
         for k, c in cols.items():
             if not isinstance(c, list) or len(c) != n:
                 err("dams", f'"{k}" must be a list as long as "id" ({n})')
         if any(not isinstance(c, list) or len(c) != n for c in cols.values()):
-            return                                  # the columns themselves are broken: nothing below can be checked
+            return                                  # the columns themselves are broken: no row can be checked
         for i in range(n):
             did, la, lo = d["id"][i], d["lat"][i], d["lon"][i]
             if not isinstance(did, str) or not did or did in ids:
@@ -198,6 +201,8 @@ def check(root):
             col = as_dict("dams.fields", d.get("fields") or {}).get(f.get("id"))
             if not isinstance(col, list) or len(col) != n:
                 err("dams.fields", f'"{f.get("id")}" must be a list of {n} entries (null for unknown)')
+
+    check_dams()
 
     # series are checked against dams.json; without a readable dams.json that would only repeat its error
     tiles = list((root / "series").glob("*.json")) if (root / "series").is_dir() and ids else []

@@ -90,14 +90,19 @@ def main():
     out = Path(args.data) / "runs" / args.run_id / "live.json"
     if bool(args.step_en) != bool(args.step_zh) or bool(args.note_en) != bool(args.note_zh):
         sys.exit("give --step-en with --step-zh (and --note-en with --note-zh): every text needs both languages")
+    once = args.status in ("finished", "failed")
+    tries = 0
     while True:
         try:
             one_round(args, out)
+            if once:
+                return                          # finished/failed: one good write is enough
         except Exception as e:                  # noqa: BLE001 - keep writing; the card shows "unknown" meanwhile
             print(f"status_writer: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        if args.status in ("finished", "failed"):
-            return
-        time.sleep(args.every)
+            tries += 1
+            if once and tries >= 10:
+                sys.exit(f"status_writer: could not write {out} after 10 tries")
+        time.sleep(min(args.every, 10) if once else args.every)
 
 
 def one_round(args, out):

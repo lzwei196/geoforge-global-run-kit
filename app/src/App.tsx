@@ -75,6 +75,7 @@ export default function App() {
     if (!dams || !m || selId === null) return
     const i = dams.id.indexOf(selId)
     if (i < 0) { setSelId(null); setSeries(null); return }
+    setSeries('loading')
     loadSeries(selId, dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(setSeries).catch(() => setSeries('error'))
   }, [dams])
   // processed = the dam has the main value (page.default_value); a dam still waiting has null there

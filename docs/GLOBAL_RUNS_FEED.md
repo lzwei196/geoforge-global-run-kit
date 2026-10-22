@@ -1,12 +1,20 @@
 # Your card on GeoForge Global Runs
 
-[geoforgehhu.com/global-runs.html](https://geoforgehhu.com/global-runs.html) shows one card per project. Your card is
-drawn by GeoForge's page from two of your files, read straight from your server each time someone opens the page:
+[geoforgehhu.com/global-runs.html](https://geoforgehhu.com/global-runs.html) shows one card per project, in two
+sections: "Ongoing" (most active first) and "Finished". Every card has the same shape: picture with a status badge,
+tags, "by <your group>", title, two sentences, three facts, the most active run (other runs fold under "+ N more
+runs") and an "Open the live map" button.
 
-- `data/manifest.json` (title, text, tags, facts, runs)
-- `data/runs/<run_id>/live.json` (each run's state)
+What comes from where:
 
-Your run is never touched by us; we only read these two files.
+| On the card | Comes from |
+| --- | --- |
+| picture, tags, title, text, "by" line, map button address | agreed with GeoForge when we add you, kept on our page (send us changes) |
+| the three facts | the first 3 `facts` of your `data/manifest.json`, read live (each cut at 40 characters) |
+| runs and their status | `runs` in your `manifest.json` + each `data/runs/<run_id>/live.json`, read live |
+
+So your server only has to serve those files; your run is never touched by us. Everything is shown as plain text.
+When every run is `finished`, your card moves to "Finished".
 
 ## live.json fields
 
