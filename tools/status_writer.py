@@ -97,7 +97,7 @@ def main():
             one_round(args, out)
             if once:
                 return                          # finished/failed: one good write is enough
-        except Exception as e:                  # noqa: BLE001 - keep writing; the card shows "unknown" meanwhile
+        except Exception as e:                  # noqa: BLE001 - try again next round (finished/failed: up to 10 tries)
             print(f"status_writer: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
             tries += 1
             if once and tries >= 10:

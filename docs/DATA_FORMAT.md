@@ -32,11 +32,11 @@ The top part is the Global Runs feed (see `GLOBAL_RUNS_FEED.md`); `page` holds w
 | `example` | `true` / absent | only in example data; the page shows a yellow banner and the checker refuses it |
 | `updated_at` | UTC time | when the data last changed. The page re-reads `dams.json` only when this changes, so update it on every data write |
 | `group` | text, ≤ 80 | your group's name |
-| `title` | text, ≤ 80 | the page and card title |
+| `title` | text, ≤ 80 | your page's title (the Global Runs card title is agreed with GeoForge) |
 | `text` | text, ≤ 400 | two sentences: what the agents do |
 | `tags` | `{"en": [...], "zh": [...]}`, 1–6 | short labels |
-| `facts` | up to 4 texts, each ≤ 40 | short facts for the card, e.g. "1,200 dams" |
-| `map_url` | https address | where your page lives (the card's "Open the map" button) |
+| `facts` | up to 4 texts, each ≤ 40 | short facts, e.g. "1,200 dams"; the Global Runs card shows the first 3 |
+| `map_url` | https address | where your page lives (for your own records; the card's button address is agreed with GeoForge) |
 | `runs` | list | `{"run_id", "name": text, "started": "YYYY-MM-DD"}`, newest first |
 | `page.region` | text | the area, e.g. "China" |
 | `page.method` | text, ≤ 400 | satellite, track, processing steps, in plain words |

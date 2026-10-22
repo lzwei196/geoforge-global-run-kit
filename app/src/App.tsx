@@ -31,6 +31,7 @@ export default function App() {
   const [now, setNow] = useState(Date.now())
   const detailRef = useRef<HTMLDivElement>(null)
   const stamp = useRef<string | null>(null)
+  const openId = useRef<string | null>(null)                    // a slow series read for an earlier dam must not win
 
   useEffect(() => { document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'; saveLang(lang) }, [lang])
   useEffect(() => { if (m) document.title = `${tr(m.title, lang)} · GeoForge Global Runs` }, [m, lang])
@@ -74,9 +75,9 @@ export default function App() {
   useEffect(() => {
     if (!dams || !m || selId === null) return
     const i = dams.id.indexOf(selId)
-    if (i < 0) { setSelId(null); setSeries(null); return }
+    if (i < 0) { openId.current = null; setSelId(null); setSeries(null); return }
     setSeries('loading')
-    loadSeries(selId, dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(setSeries).catch(() => setSeries('error'))
+    loadSeries(selId, dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(s => { if (openId.current === selId) setSeries(s) }).catch(() => { if (openId.current === selId) setSeries('error') })
   }, [dams])
   // processed = the dam has the main value (page.default_value); a dam still waiting has null there
   const processed = useMemo(() => dams && m ? (dams.values[m.page.default_value] ?? []).filter(v => v !== null && v !== undefined).length : 0, [dams, m])
@@ -85,8 +86,9 @@ export default function App() {
   const say = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3500) }
   const openDam = (i: number | null) => {
     if (i === null || !dams || !m) return
-    setSelId(dams.id[i]); setSeries('loading')
-    loadSeries(dams.id[i], dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(setSeries).catch(() => setSeries('error'))
+    const id = dams.id[i]
+    openId.current = id; setSelId(id); setSeries('loading')
+    loadSeries(id, dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(s => { if (openId.current === id) setSeries(s) }).catch(() => { if (openId.current === id) setSeries('error') })
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
   const search = () => {

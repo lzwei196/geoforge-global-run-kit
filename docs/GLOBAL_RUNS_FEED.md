@@ -11,7 +11,7 @@ What comes from where:
 | --- | --- |
 | picture, tags, title, text, "by" line, map button address | agreed with GeoForge when we add you, kept on our page (send us changes) |
 | the three facts | the first 3 `facts` of your `data/manifest.json`, read live (each cut at 40 characters) |
-| runs and their status | `runs` in your `manifest.json` + each `data/runs/<run_id>/live.json`, read live |
+| runs and their status | `runs` in your `manifest.json` (at most 20) + each `data/runs/<run_id>/live.json`, read live |
 
 So your server only has to serve those files; your run is never touched by us. Everything is shown as plain text.
 When every run is `finished`, your card moves to "Finished".
@@ -55,7 +55,8 @@ The card and your page say "Running now" only when `status` is `running`, `proce
 | `failed` | ended with an error, will not go on | Ended with an error / 出错结束 | no |
 
 A file that is older than 3 minutes or more than 1 minute in the future shows "Status unknown (feed paused)" /
-"状态未知（数据暂停更新）"; a missing or unreadable file shows "No status yet" / "暂无状态". Nothing ever guesses that a
+"状态未知（数据暂停更新）"; a missing or unreadable file shows "Status not available right now" / "暂时无法读取状态" on the card
+(and "No status yet" / "暂无状态" on your page). Nothing ever guesses that a
 run is still going.
 Keep the server clock synced (NTP).
 
