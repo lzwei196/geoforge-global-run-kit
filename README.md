@@ -7,6 +7,8 @@ The starter page is made for **points with a time series**, such as dams with In
 GeoForge header with the back button, an English/Chinese switch, the honest run status, a map of every point
 coloured by a value, a time-series chart and the project panel. You fill in data and texts.
 
+**New here? Start with the step-by-step [tutorial](docs/TUTORIAL.md)** (中文：[docs/TUTORIAL.zh.md](docs/TUTORIAL.zh.md)).
+
 ## Try it in 2 minutes
 
 ```
@@ -19,9 +21,11 @@ cd app && npm ci && npm run dev      # Node 18+; open http://127.0.0.1:8870/
 | Path | What it is |
 | --- | --- |
 | `app/` | the page (React + Leaflet + TypeScript, built with Vite) |
+| `tools/csv_to_data.py` | turns your results (two CSV files) into the page's data |
 | `tools/make_example_data.py` | writes example data: copy its shapes for your own pipeline |
 | `tools/check_data.py` | checks your data folder before you publish |
 | `tools/status_writer.py` | writes your run's live status every 60 s |
+| `docs/TUTORIAL.md` | every step from an empty computer to a live page and card |
 | `docs/DATA_FORMAT.md` | every file and field the page reads |
 | `docs/GLOBAL_RUNS_FEED.md` | how your card on the Global Runs page works, and the status rules |
 | `docs/HOSTING.md` | build, nginx, headers, checks |

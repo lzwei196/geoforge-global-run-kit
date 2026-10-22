@@ -5,6 +5,8 @@
 起步页面面向**带时间序列的点数据**，例如基于 InSAR 的大坝形变。页面已包含：带返回按钮的 GeoForge 页头、中英文切换、
 如实的运行状态、按数值着色的点地图、时间序列图和项目面板。你只需填入数据和文字。
 
+**第一次使用？请从分步[教程](docs/TUTORIAL.zh.md)开始**（English: [docs/TUTORIAL.md](docs/TUTORIAL.md)）。
+
 ## 两分钟试用
 
 ```
@@ -17,9 +19,11 @@ cd app && npm ci && npm run dev      # 需要 Node 18+；打开 http://127.0.0.1
 | 路径 | 说明 |
 | --- | --- |
 | `app/` | 页面（React + Leaflet + TypeScript，用 Vite 构建） |
+| `tools/csv_to_data.py` | 把你的结果（两个 CSV 文件）转成页面数据 |
 | `tools/make_example_data.py` | 生成示例数据：请按其格式编写自己的数据流程 |
 | `tools/check_data.py` | 发布前检查数据文件夹 |
 | `tools/status_writer.py` | 每 60 秒写出运行状态 |
+| `docs/TUTORIAL.zh.md` | 从空电脑到页面和卡片上线的每一步 |
 | `docs/DATA_FORMAT.md` | 页面读取的全部文件和字段 |
 | `docs/GLOBAL_RUNS_FEED.md` | 全球运行页面上的卡片及状态规则 |
 | `docs/HOSTING.md` | 构建、nginx、响应头、检查 |
@@ -34,7 +38,7 @@ cd app && npm ci && npm run dev      # 需要 Node 18+；打开 http://127.0.0.1
 4. 部署（`docs/HOSTING.md`），启动状态写出脚本，完成 `docs/CHECKLIST.md`。
 5. 把页面地址和一张卡片图片发给 GeoForge。我们检查后把你的卡片加入全球运行页面。
 
-说明：文档正文为英文；字段名和命令与中文无关，可直接照用。用词要求：KI agents 译为“知识基础设施智能体”。
+说明：教程有中文版，其他文档正文为英文；字段名和命令与中文无关，可直接照用。用词要求：KI agents 译为“知识基础设施智能体”。
 如在中国大陆服务器上用域名公开网站，需要 ICP 备案。
 
 问题和修复：请在本仓库提交 issue。

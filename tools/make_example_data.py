@@ -21,12 +21,13 @@ TILE_DEG = 5
 rng = random.Random(7)
 
 
-def write(rel, obj):
+def write(rel, obj, indent=None):
     """Write JSON atomically: a temporary file first, then rename, so a reader never sees half a file."""
     p = OUT / rel
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")
+    seps = (",", ": ") if indent else (",", ":")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=indent, separators=seps, allow_nan=False), encoding="utf-8")
     os.replace(tmp, p)
 
 
@@ -102,7 +103,7 @@ manifest = {
     },
 }
 
-write("manifest.json", manifest)
+write("manifest.json", manifest, indent=2)          # one field per line, so it is easy to copy and edit by hand
 write("dams.json", dams)
 for name, rows in series_by_tile.items():
     write(f"series/{name}.json", rows)
