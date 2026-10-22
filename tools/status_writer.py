@@ -13,6 +13,7 @@ Only the Python standard library is used.
 import argparse
 import json
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,21 +24,41 @@ def utc(t):
 
 
 def alive(pid_file):
-    """True only when the PID in the file belongs to a running process (signal 0 checks without touching it)."""
+    """True only when the PID in the file belongs to a running process. Signal 0 sends nothing: it only asks.
+    A process of another user answers "permission denied", which still means it exists."""
     try:
-        os.kill(int(Path(pid_file).read_text().strip()), 0)
-        return True
+        pid = int(Path(pid_file).read_text().strip())
     except (OSError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
         return False
 
 
 def newest_mtime(path):
     """The newest change time of a file, or of any file inside a folder: the last real sign of work."""
     p = Path(path)
-    if p.is_file():
-        return p.stat().st_mtime
-    times = [f.stat().st_mtime for f in p.rglob("*") if f.is_file()] if p.is_dir() else []
-    return max(times) if times else None
+    try:
+        if p.is_file():
+            return p.stat().st_mtime
+    except OSError:
+        return None
+    newest = None
+    if p.is_dir():                              # a big folder is slow to walk: prefer pointing --activity at a log file
+        for f in p.rglob("*"):
+            try:
+                if f.is_file():
+                    t = f.stat().st_mtime
+                    newest = t if newest is None or t > newest else newest
+            except OSError:                     # a file removed while we looked: skip it
+                pass
+    return newest
 
 
 def progress():
@@ -51,7 +72,7 @@ def progress():
 def write(path, obj):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(obj, ensure_ascii=False), encoding="utf-8")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, allow_nan=False), encoding="utf-8")
     os.replace(tmp, path)                       # atomic: nobody reads half a file
 
 
@@ -67,28 +88,42 @@ def main():
     a.add_argument("--every", type=int, default=60, help="seconds between writes (keep it 60 or less)")
     args = a.parse_args()
     out = Path(args.data) / "runs" / args.run_id / "live.json"
+    if bool(args.step_en) != bool(args.step_zh) or bool(args.note_en) != bool(args.note_zh):
+        sys.exit("give --step-en with --step-zh (and --note-en with --note-zh): every text needs both languages")
     while True:
-        now = time.time()
-        is_alive = alive(args.pid_file)
-        last = newest_mtime(args.activity)
-        live = {
-            "run_id": args.run_id,
-            "status": args.status or ("running" if is_alive else "stopped"),
-            "process_alive": is_alive,
-            "exported_at": utc(now),
-            "last_activity": utc(last if last else now),
-        }
-        if args.step_en and args.step_zh:
-            live["step"] = {"en": args.step_en, "zh": args.step_zh}
-        if args.note_en and args.note_zh:
-            live["note"] = {"en": args.note_en, "zh": args.note_zh}
-        p = progress()
-        if p:
-            live["progress"] = p
-        write(out, live)
+        try:
+            one_round(args, out)
+        except Exception as e:                  # noqa: BLE001 - keep writing; the card shows "unknown" meanwhile
+            print(f"status_writer: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         if args.status in ("finished", "failed"):
             return
         time.sleep(args.every)
+
+
+def one_round(args, out):
+    now = time.time()
+    is_alive = alive(args.pid_file)
+    # last real sign of work: the activity file/folder, else when the PID file was written (the run's start).
+    # Never "now": that would claim work nobody saw.
+    last = newest_mtime(args.activity) or newest_mtime(args.pid_file)
+    live = {
+        "run_id": args.run_id,
+        "status": args.status or ("running" if is_alive else "stopped"),
+        "process_alive": is_alive,
+        "exported_at": utc(now),
+    }
+    if last:
+        live["last_activity"] = utc(last)
+    else:
+        print("status_writer: no activity file and no PID file found; last_activity left out", file=sys.stderr, flush=True)
+    if args.step_en and args.step_zh:
+        live["step"] = {"en": args.step_en, "zh": args.step_zh}
+    if args.note_en and args.note_zh:
+        live["note"] = {"en": args.note_en, "zh": args.note_zh}
+    p = progress()
+    if p:
+        live["progress"] = p
+    write(out, live)
 
 
 if __name__ == "__main__":

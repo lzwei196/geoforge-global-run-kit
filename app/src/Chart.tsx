@@ -14,11 +14,11 @@ function niceTicks(lo: number, hi: number, n = 5): number[] {
   return out
 }
 
-export function SeriesChart({ s, unit, lang, labels }: { s: Series; unit: string; lang: Lang; labels: { error: string; date: string } }) {
+export function SeriesChart({ s, unit, lang, labels }: { s: Series; unit: string; lang: Lang; labels: { error: string; date: string; none: string } }) {
   const [hi, setHi] = useState<number | null>(null)
   const pts = useMemo(() => s.t.map((t, k) => ({ t: Date.parse(t), d: s.d[k], e: s.e?.[k] ?? null, day: t }))
     .filter(p => Number.isFinite(p.t) && typeof p.d === 'number' && Number.isFinite(p.d)) as { t: number; d: number; e: number | null; day: string }[], [s])
-  if (pts.length < 2) return null
+  if (pts.length < 2) return <div className="empty">{labels.none}</div>
   const t0 = pts[0].t, t1 = pts[pts.length - 1].t
   const lows = pts.map(p => p.d - (p.e ?? 0)), highs = pts.map(p => p.d + (p.e ?? 0))
   let y0 = Math.min(0, ...lows), y1 = Math.max(0, ...highs)

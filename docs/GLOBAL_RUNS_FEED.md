@@ -18,7 +18,7 @@ Your run is never touched by us; we only read these two files.
 | `exported_at` | yes | UTC time this file was written |
 | `last_activity` | yes | UTC time of the newest real sign of work: a log line, an output file, a finished step |
 | `step` | no | text, ≤ 40: the step now, e.g. "unwrapping" / "解缠" |
-| `progress` | no | `{"done": 340, "total": 1200, "what": {"en": "dams", "zh": "座大坝"}}`; leave `total` out if unknown |
+| `progress` | no | `{"done": 340, "total": 1200, "what": {"en": "dams", "zh": "座大坝"}}` (`what` ≤ 30); leave `total` out if unknown |
 | `note` | no | text, ≤ 120: one line, e.g. why the run is paused |
 
 ```json
@@ -46,9 +46,14 @@ The card and your page say "Running now" only when `status` is `running`, `proce
 | `finished` | complete | Finished / 已完成 | no |
 | `failed` | ended with an error, will not go on | Ended with an error / 出错结束 | no |
 
-A file that is older than 3 minutes, more than 1 minute in the future, missing or unreadable shows
-"Status unknown (feed paused)" / "状态未知（数据暂停更新）". Nothing ever guesses that a run is still going.
+A file that is older than 3 minutes or more than 1 minute in the future shows "Status unknown (feed paused)" /
+"状态未知（数据暂停更新）"; a missing or unreadable file shows "No status yet" / "暂无状态". Nothing ever guesses that a
+run is still going.
 Keep the server clock synced (NTP).
+
+Point `tools/status_writer.py --activity` at a log file the run writes to, not at a big output folder (walking a
+large folder every minute is slow). Remove the PID file when the run ends: a stale PID file whose number is later
+reused by another process would look alive.
 
 ## What your server must send
 

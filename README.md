@@ -10,8 +10,8 @@ coloured by a value, a time-series chart and the project panel. You fill in data
 ## Try it in 2 minutes
 
 ```
-python tools/make_example_data.py     # made-up example data (clearly marked) into app/public/data/
-cd app && npm install && npm run dev  # Node 18+; open http://127.0.0.1:8870/
+python3 tools/make_example_data.py    # made-up example data (clearly marked) into app/public/data/
+cd app && npm ci && npm run dev      # Node 18+; open http://127.0.0.1:8870/
 ```
 
 ## What is inside

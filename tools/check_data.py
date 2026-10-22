@@ -24,15 +24,32 @@ def err(where, msg): ERR.append(f"{where}: {msg}")
 def warn(where, msg): WARN.append(f"{where}: {msg}")
 
 
-def load(p, max_kb=None):
+def no_nan(name):
+    raise ValueError(f"{name} is not allowed in JSON (browsers cannot read the file); write null")
+
+
+def load(p, max_kb=None, label=None):
+    label = label or p.name
     if not p.is_file():
-        err(p.name, "missing"); return None
+        err(label, "missing"); return None
     if max_kb and p.stat().st_size > max_kb * 1024:
-        err(p.name, f"larger than {max_kb} KB")
+        err(label, f"larger than {max_kb} KB")
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        return json.loads(p.read_text(encoding="utf-8"), parse_constant=no_nan)
     except Exception as e:                      # noqa: BLE001 - report any read problem
-        err(p.name, f"not valid UTF-8 JSON ({e})"); return None
+        err(label, f"not valid UTF-8 JSON ({e})"); return None
+
+
+def num_or_null(x):
+    return x is None or (isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x))
+
+
+def as_dict(where, v):
+    """The value must be a JSON object; report (not crash) when it is not."""
+    if isinstance(v, dict):
+        return v
+    err(where, "must be an object {...}")
+    return {}
 
 
 def text2(where, v, maxlen=None, need=True):
@@ -82,11 +99,15 @@ def check(root):
     text2("manifest.group", m.get("group"), 80)
     text2("manifest.title", m.get("title"), 80)
     text2("manifest.text", m.get("text"), 400)
-    tags = m.get("tags") or {}
+    tags = as_dict("manifest.tags", m.get("tags"))
     for lang in ("en", "zh"):
-        if not isinstance(tags.get(lang), list) or not 1 <= len(tags[lang]) <= 6:
-            err("manifest.tags", f'"{lang}": a list of 1 to 6 short labels')
-    for k, f in enumerate(m.get("facts") or []):
+        t = tags.get(lang)
+        if not isinstance(t, list) or not 1 <= len(t) <= 6 or not all(isinstance(x, str) and x.strip() for x in t):
+            err("manifest.tags", f'"{lang}": a list of 1 to 6 short text labels')
+    facts = m.get("facts") or []
+    if not isinstance(facts, list) or len(facts) > 4:
+        err("manifest.facts", "a list of at most 4 texts"); facts = []
+    for k, f in enumerate(facts):
         text2(f"manifest.facts[{k}]", f, 40)
     if m.get("map_url") and not str(m["map_url"]).startswith("https://"):
         err("manifest.map_url", "must start with https://")
@@ -96,6 +117,7 @@ def check(root):
         runs = []
     seen = set()
     for k, r in enumerate(runs):
+        r = as_dict(f"manifest.runs[{k}]", r)
         rid = str(r.get("run_id", ""))
         if not RUN_ID.match(rid) or rid in seen:
             err(f"manifest.runs[{k}]", "run_id: A-Z a-z 0-9 _ -, unique")
@@ -104,13 +126,14 @@ def check(root):
         if not is_day(r.get("started")):
             err(f"manifest.runs[{k}].started", "date YYYY-MM-DD")
 
-    p = m.get("page") or {}
+    runs = [r for r in runs if isinstance(r, dict)]
+    p = as_dict("manifest.page", m.get("page"))
     text2("page.region", p.get("region"), 80)
     text2("page.method", p.get("method"), 400)
     per = p.get("period")
     if not (isinstance(per, list) and len(per) == 2 and all(is_day(x) for x in per) and per[0] <= per[1]):
         err("page.period", '["YYYY-MM-DD", "YYYY-MM-DD"], first <= last')
-    vdefs = p.get("values") or []
+    vdefs = [as_dict("page.values", v) for v in (p.get("values") or [])]
     vids = [v.get("id") for v in vdefs]
     if not vdefs or len(set(vids)) != len(vids):
         err("page.values", "at least one value, ids unique")
@@ -129,13 +152,13 @@ def check(root):
             err(w, 'scale must be "diverging" or "sequential"')
     if p.get("default_value") not in vids:
         err("page.default_value", "must be one of the value ids")
-    fdefs = p.get("fields") or []
+    fdefs = [as_dict("page.fields", f) for f in (p.get("fields") or [])]
     for f in fdefs:
         text2(f"page.fields[{f.get('id')}].name", f.get("name"), 40)
-    s = p.get("series") or {}
+    s = as_dict("page.series", p.get("series"))
     text2("page.series.what", s.get("what"), 80)
     td = s.get("tile_deg")
-    if not (isinstance(td, int) and td > 0 and 180 % td == 0):
+    if not (isinstance(td, int) and not isinstance(td, bool) and td > 0 and 180 % td == 0):
         err("page.series.tile_deg", "a whole number that divides 180, e.g. 5")
         td = None
 
@@ -147,42 +170,46 @@ def check(root):
         for k, c in cols.items():
             if not isinstance(c, list) or len(c) != n:
                 err("dams", f'"{k}" must be a list as long as "id" ({n})')
-        if ERR:
-            return
+        if any(not isinstance(c, list) or len(c) != n for c in cols.values()):
+            return                                  # the columns themselves are broken: nothing below can be checked
         for i in range(n):
             did, la, lo = d["id"][i], d["lat"][i], d["lon"][i]
             if not isinstance(did, str) or not did or did in ids:
                 err("dams.id", f"row {i}: empty or repeated id {did!r}")
             if not (isinstance(la, (int, float)) and -90 <= la <= 90 and isinstance(lo, (int, float)) and -180 <= lo <= 180):
                 err("dams", f"row {i} ({did}): lat/lon out of range")
-            if not (d["name_en"][i] or d["name_zh"][i]):
+            if not all(x is None or isinstance(x, str) for x in (d["name_en"][i], d["name_zh"][i])):
+                err("dams", f"row {i} ({did}): names must be text (or empty)")
+            elif not (d["name_en"][i] or d["name_zh"][i]):
                 warn("dams", f"row {i} ({did}): no name; the id is shown instead")
             ids[did] = (la, lo)
-        vals = d.get("values") or {}
+        vals = as_dict("dams.values", d.get("values") or {})
         for v in vdefs:
             col = vals.get(v.get("id"))
             if not isinstance(col, list) or len(col) != n:
                 err("dams.values", f'"{v.get("id")}" must be a list of {n} numbers or null'); continue
-            bad = [i for i, x in enumerate(col) if x is not None and not (isinstance(x, (int, float)) and math.isfinite(x))]
+            bad = [i for i, x in enumerate(col) if not num_or_null(x)]
             if v.get("kind") == "cat":
                 nc = len(v.get("classes") or [])
                 bad += [i for i, x in enumerate(col) if x is not None and not (isinstance(x, int) and 0 <= x < nc)]
             if bad:
                 err("dams.values", f'"{v.get("id")}": {len(bad)} bad entries, first at row {bad[0]}')
         for f in fdefs:
-            col = (d.get("fields") or {}).get(f.get("id"))
+            col = as_dict("dams.fields", d.get("fields") or {}).get(f.get("id"))
             if not isinstance(col, list) or len(col) != n:
                 err("dams.fields", f'"{f.get("id")}" must be a list of {n} entries (null for unknown)')
 
-    tiles = list((root / "series").glob("*.json")) if (root / "series").is_dir() else []
-    if not tiles:
+    # series are checked against dams.json; without a readable dams.json that would only repeat its error
+    tiles = list((root / "series").glob("*.json")) if (root / "series").is_dir() and ids else []
+    if not tiles and ids:
         warn("series", "no series tiles yet; every dam shows 'no time series'")
     for tp in tiles:
-        rows = load(tp, 20 * 1024)
+        rows = load(tp, 20 * 1024, label=f"series/{tp.name}")
         if not isinstance(rows, dict):
             continue
         for did, sr in rows.items():
             w = f"series/{tp.name}[{did}]"
+            sr = as_dict(w, sr)
             if did not in ids:
                 err(w, "dam id not in dams.json"); continue
             la, lo = ids[did]
@@ -193,13 +220,15 @@ def check(root):
                 err(w, '"t" and "d" must be lists of the same length'); continue
             if not all(is_day(x) for x in t) or t != sorted(t):
                 err(w, '"t" must be YYYY-MM-DD dates, oldest first')
-            if "e" in sr and (not isinstance(sr["e"], list) or len(sr["e"]) != len(t)):
-                err(w, '"e" must be as long as "t"')
+            if not all(num_or_null(x) for x in v):
+                err(w, '"d" must hold numbers or null')
+            if "e" in sr and (not isinstance(sr["e"], list) or len(sr["e"]) != len(t) or not all(num_or_null(x) for x in sr["e"])):
+                err(w, '"e" must be numbers or null, as long as "t"')
 
     now = datetime.now(timezone.utc)
     for r in runs:
         rid = str(r.get("run_id", ""))
-        lv = load(root / "runs" / rid / "live.json", 64)
+        lv = load(root / "runs" / rid / "live.json", 64, label=f"runs/{rid}/live.json")
         if not isinstance(lv, dict):
             continue
         w = f"runs/{rid}/live.json"

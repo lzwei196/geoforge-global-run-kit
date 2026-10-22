@@ -22,7 +22,7 @@ export default function App() {
   const [lives, setLives] = useState<Record<string, Live | null>>({})
   const [err, setErr] = useState<string | null>(null)
   const [valueId, setValueId] = useState<string | null>(null)
-  const [sel, setSel] = useState<number | null>(null)
+  const [selId, setSelId] = useState<string | null>(null)     // the open dam, by id: list positions change between updates
   const [series, setSeries] = useState<Series | null | 'loading' | 'error'>(null)
   const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null)
   const [focus, setFocus] = useState<{ point: [number, number]; token: number } | null>(null)
@@ -69,6 +69,14 @@ export default function App() {
     return { colors: dams.id.map((_, i) => { const v = vals[i]; return typeof v === 'number' && Number.isFinite(v) ? f((v - lo) / (hi - lo)) : NO_VALUE }), lo, hi }
   }, [dams, vdef])
 
+  const sel = useMemo(() => { if (!dams || selId === null) return null; const i = dams.id.indexOf(selId); return i < 0 ? null : i }, [dams, selId])
+  // new dams.json (series cache cleared): read the open dam's series again, or close it if the dam is gone
+  useEffect(() => {
+    if (!dams || !m || selId === null) return
+    const i = dams.id.indexOf(selId)
+    if (i < 0) { setSelId(null); setSeries(null); return }
+    loadSeries(selId, dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(setSeries).catch(() => setSeries('error'))
+  }, [dams])
   // processed = the dam has the main value (page.default_value); a dam still waiting has null there
   const processed = useMemo(() => dams && m ? (dams.values[m.page.default_value] ?? []).filter(v => v !== null && v !== undefined).length : 0, [dams, m])
   const top = useMemo(() => m ? m.runs.map(r => stateOf(lives[r.run_id] ?? null, w, lang, now)).sort((a, b) => RANK[a.key] - RANK[b.key])[0] ?? null : null, [m, lives, w, lang, now])
@@ -76,7 +84,7 @@ export default function App() {
   const say = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3500) }
   const openDam = (i: number | null) => {
     if (i === null || !dams || !m) return
-    setSel(i); setSeries('loading')
+    setSelId(dams.id[i]); setSeries('loading')
     loadSeries(dams.id[i], dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(setSeries).catch(() => setSeries('error'))
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
@@ -90,7 +98,7 @@ export default function App() {
     } else if (t) {
       const low = t.toLowerCase()
       i = dams.id.findIndex(x => x.toLowerCase() === low)
-      if (i < 0) i = dams.id.findIndex((_, k) => (dams.name_en[k] || '').toLowerCase().includes(low) || (dams.name_zh[k] || '').includes(t))
+      if (i < 0) i = dams.id.findIndex((_, k) => String(dams.name_en[k] ?? '').toLowerCase().includes(low) || String(dams.name_zh[k] ?? '').includes(t))
     }
     if (i < 0) return say(w.notFound)
     setFocus({ point: [dams.lat[i], dams.lon[i]], token: Date.now() }); openDam(i)
@@ -105,7 +113,7 @@ export default function App() {
         <div className="brand"><span className="logo" />{m ? tr(m.title, lang) : '…'}</div>
         <div className="search"><input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} placeholder={w.search} aria-label={w.search} /><button onClick={search}>{w.go}</button></div>
         <button className="lang-btn" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>{w.other}</button>
-        <div className={`badge ${top?.key ?? 'unknown'}`}><i />{top ? top.text : w.loading}</div>
+        <div className={`badge ${top?.key ?? 'unknown'}`}><i />{top ? top.text : m ? w.noStatus : w.loading}</div>
       </header>
       {m?.example && <div className="example-banner">{w.example}</div>}
       <section className="hero">

@@ -17,7 +17,9 @@ Rules for every file:
 - UTF-8 JSON. Write each file to a temporary name first, then rename it (`os.replace`), so no reader ever sees half a file.
 - Every text a reader sees is `{"en": "...", "zh": "..."}`, both filled in.
 - Times are UTC with the zone: `2026-10-22T03:07:15+00:00`. Days are `YYYY-MM-DD`.
-- `null` means "no value yet". Never write 0, -9999 or NaN for a missing value: the page would draw it as a real number.
+- `null` means "no value yet". Never write 0 or -9999 for a missing value: the page would draw it as a real number.
+- Never write `NaN` or `Infinity`: they are not JSON, and a browser then cannot read the WHOLE file. In Python use
+  `json.dumps(..., allow_nan=False)` and turn NaN into `None` first (numpy: `None if np.isnan(x) else float(x)`).
 
 ## manifest.json
 
@@ -29,11 +31,11 @@ The top part is the Global Runs feed (see `GLOBAL_RUNS_FEED.md`); `page` holds w
 | `project_id` | a–z, 0–9, `-` | your project's short id, agreed with GeoForge |
 | `example` | `true` / absent | only in example data; the page shows a yellow banner and the checker refuses it |
 | `updated_at` | UTC time | when the data last changed. The page re-reads `dams.json` only when this changes, so update it on every data write |
-| `group` | text | your group's name |
+| `group` | text, ≤ 80 | your group's name |
 | `title` | text, ≤ 80 | the page and card title |
 | `text` | text, ≤ 400 | two sentences: what the agents do |
 | `tags` | `{"en": [...], "zh": [...]}`, 1–6 | short labels |
-| `facts` | list of text, ≤ 4 | short facts for the card, e.g. "1,200 dams" |
+| `facts` | up to 4 texts, each ≤ 40 | short facts for the card, e.g. "1,200 dams" |
 | `map_url` | https address | where your page lives (the card's "Open the map" button) |
 | `runs` | list | `{"run_id", "name": text, "started": "YYYY-MM-DD"}`, newest first |
 | `page.region` | text | the area, e.g. "China" |
@@ -42,7 +44,7 @@ The top part is the Global Runs feed (see `GLOBAL_RUNS_FEED.md`); `page` holds w
 | `page.values` | list | the values a reader can colour the map by (below) |
 | `page.default_value` | a value id | the map's first colour; a dam with `null` here counts as "not processed yet" |
 | `page.fields` | list | plain details shown for each dam: `{"id", "name": text, "unit"?}` |
-| `page.series` | object | `{"unit": "mm", "what": text, "tile_deg": 5}` |
+| `page.series` | object | `{"unit": "mm", "what": text, "tile_deg": 5}`; `tile_deg` is a whole number that divides 180 (1, 2, 3, 5, 10, …) |
 
 A value in `page.values`:
 
@@ -94,7 +96,7 @@ a dam at 30.82° N, 111.00° E with `tile_deg` 5 lives in `series/30_110.json`; 
 
 - `t`: image dates, oldest first. `d`: displacement in `page.series.unit` (same length; `null` for a missing date).
 - `e`: optional ± error, same length. The chart draws it as a light band.
-- Keep one file under about 20 MB; use a smaller `tile_deg` if a square gets too big.
+- Keep one file under about 20 MB; if a square gets too big, use a smaller whole `tile_deg` (e.g. 2 or 1).
 
 ## runs/<run_id>/live.json
 

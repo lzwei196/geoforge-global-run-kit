@@ -2,7 +2,7 @@
 
 ## Your data
 
-- [ ] `python tools/check_data.py <your data folder>` says "ready to publish" (0 errors).
+- [ ] `python3 tools/check_data.py <your data folder>` says "ready to publish" (0 errors).
 - [ ] `manifest.json` has no `"example": true`.
 - [ ] Every text is filled in English and Chinese, and a Chinese speaker has read the Chinese.
 - [ ] `updated_at` changes every time new results are written; `manifest.json` is written last.

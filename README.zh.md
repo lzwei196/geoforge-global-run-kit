@@ -8,8 +8,8 @@
 ## 两分钟试用
 
 ```
-python tools/make_example_data.py     # 生成示例数据（已明确标注为虚构）到 app/public/data/
-cd app && npm install && npm run dev  # 需要 Node 18+；打开 http://127.0.0.1:8870/
+python3 tools/make_example_data.py    # 生成示例数据（已明确标注为虚构）到 app/public/data/
+cd app && npm ci && npm run dev      # 需要 Node 18+；打开 http://127.0.0.1:8870/
 ```
 
 ## 内容

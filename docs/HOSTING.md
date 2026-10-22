@@ -7,11 +7,11 @@ visitor's browser reads the newest files.
 
 ```
 cd app
-npm install          # once (Node 18 or newer)
+npm ci               # once (Node 18 or newer); installs the exact versions in package-lock.json
 npm run build        # writes app/dist/
 ```
 
-Try it first on your own computer: `python tools/make_example_data.py`, then `cd app && npm run dev` and open
+Try it first on your own computer: `python3 tools/make_example_data.py`, then `cd app && npm run dev` and open
 http://127.0.0.1:8870/. With your own data: copy it into `app/public/data/` instead.
 
 ## 2. Put it on your web server
@@ -34,6 +34,7 @@ server {
     location /dams/ {
         alias /var/www/dams/;
         index index.html;
+        add_header Cache-Control "no-cache" always;   # index.html: always ask for the newest (it names the asset files)
     }
     location /dams/assets/ {                    # file names change on every build: cache them long
         alias /var/www/dams/assets/;
@@ -50,13 +51,16 @@ server {
 }
 ```
 
+nginx note: an `add_header` inside a `location` switches off every `add_header` set at the `server` level (e.g. HSTS).
+Repeat those lines inside each location if you use them.
+
 Apache or another server works the same way: the three rules are no-cache plus the `Access-Control-Allow-Origin`
 line on `data/`, and long caching on `assets/`.
 
 ## 4. Check
 
 ```
-python tools/check_data.py /var/www/dams/data
+python3 tools/check_data.py /var/www/dams/data
 curl -sI -H "Origin: https://geoforgehhu.com" https://your.domain/dams/data/manifest.json
 ```
 
@@ -75,3 +79,5 @@ at `/var/www/dams/data`. It writes `runs/<run_id>/live.json` every 60 seconds.
   change the two `L.tileLayer` lines in `app/src/MapView.tsx` (e.g. to Tianditu, which needs a free key). Keep a dark map.
 - **Updates to the page code** (not the data) need `npm run build` and a copy of `dist/` again; the data keep flowing meanwhile.
 - **Getting fixes from GeoForge:** we push fixes to this repository. `git pull`, check `CHANGELOG.md`, rebuild.
+- **`npm audit`** may list warnings for the dev server (vite/esbuild). They do not affect the built page, and the dev
+  server only listens on 127.0.0.1.

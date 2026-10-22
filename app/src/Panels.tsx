@@ -30,7 +30,7 @@ export function DamPanel({ i, dams, m, s, lang, w }: { i: number; dams: Dams; m:
         {s === 'loading' ? <div className="empty">{w.loading}</div>
           : s === 'error' ? <div className="empty error">{w.seriesErr}</div>
           : s === null || s.t.length < 2 ? <div className="empty">{w.noSeries}</div>
-          : <SeriesChart s={s} unit={p.series.unit} lang={lang} labels={{ error: w.error, date: w.date }} />}
+          : <SeriesChart s={s} unit={p.series.unit} lang={lang} labels={{ error: w.error, date: w.date, none: w.noSeries }} />}
       </div>
     </>
   )
