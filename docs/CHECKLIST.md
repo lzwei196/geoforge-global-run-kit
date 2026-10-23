@@ -18,14 +18,17 @@
 
 ## Your server
 
-- [ ] HTTPS with a valid certificate (and ICP filing if the server is in mainland China).
-- [ ] `data/` is sent with `Cache-Control: no-store` and `Access-Control-Allow-Origin: https://geoforgehhu.com`.
-- [ ] `curl -sI -H "Origin: https://geoforgehhu.com" https://<address>/data/manifest.json` shows both.
-- [ ] `tools/status_writer.py` (or your own writer) runs and restarts after a reboot.
-- [ ] The server clock is synced (NTP).
+- [ ] The page server (`geoforge-site`), the status writer (`geoforge-status`) and the tunnel (`geoforge-tunnel`) are
+      services that start after a reboot (or, with your own web server: HTTPS with a valid certificate, and ICP
+      filing if the server is in mainland China).
+- [ ] `curl -sI -H "Origin: https://geoforgehhu.com" https://<address>/data/manifest.json` shows `200`,
+      `Cache-Control: no-store` and `Access-Control-Allow-Origin: https://geoforgehhu.com`.
+- [ ] The tunnel key is not in any code, chat or repository.
+- [ ] The export runs after new results (cron), and the server clock is synced (NTP).
 
 ## Send to GeoForge
 
 - [ ] Your page address and `project_id`.
 - [ ] One card picture: JPG, 1200 × 800 px, under 300 KB, no text on it.
+- [ ] The card text in English and Chinese: title (up to 80 characters), two sentences, up to 6 tags.
 - [ ] A contact for status questions (we will not publish it).

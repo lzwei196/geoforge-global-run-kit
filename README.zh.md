@@ -1,17 +1,45 @@
 # GeoForge 全球运行：页面工具包
 
-用于按 GeoForge 风格搭建全球运行的实时地图页面，并接入 [geoforgehhu.com/cn/global-runs.html](https://geoforgehhu.com/cn/global-runs.html)。English: [README.md](README.md)。
+把你的全球运行做成 GeoForge 风格的实时地图页面，并在
+[geoforgehhu.com/cn/global-runs.html](https://geoforgehhu.com/cn/global-runs.html) 上显示一张卡片。English: [README.md](README.md)。
+
+## 工作方式
+
+所有程序都在运行所在的电脑上。外部无法访问这台电脑；Cloudflare 隧道把你的页面送到一个公开地址。
+
+```
+运行所在的电脑
+  你的运行 ──(结果)───> csv_to_data.py ───> site/data/       地图数据
+  你的运行 ──(PID、日志)> status_writer.py ─> site/data/runs/  “是否正在运行”，每 60 秒
+  serve.py      只在 127.0.0.1 上提供 site/（页面 + data/）
+  cloudflared   通过隧道把页面送出去
+                                │
+                                ▼
+            https://<项目名>.geoforgehhu.com           你的页面，所有人可访问
+                                ▲
+                                │ 读取 data/manifest.json 和 data/runs/*/live.json
+            geoforgehhu.com/cn/global-runs.html        你的卡片，带“打开实时地图”按钮
+```
+
+你不需要公网 IP、开放端口、自己的域名或证书。GeoForge 为你建好地址并发给你隧道密钥。如果你想用自己的域名或自己的
+网站服务器，`docs/HOSTING.md` 也介绍了这两种方式。
 
 起步页面面向**带时间序列的点数据**，例如基于 InSAR 的大坝形变。页面已包含：带返回按钮的 GeoForge 页头、中英文切换、
-如实的运行状态、按数值着色的点地图、时间序列图和项目面板。你只需填入数据和文字。
+如实的运行状态、地图、时间序列图和项目面板。你只需填入数据和文字。
 
-**第一次使用？请从分步[教程](docs/TUTORIAL.zh.md)开始**（English: [docs/TUTORIAL.md](docs/TUTORIAL.md)）。
+## 从这里开始
 
-## 两分钟试用
+**[教程](docs/TUTORIAL.zh.md)**（English: [docs/TUTORIAL.md](docs/TUTORIAL.md)）分两部分讲解每一步：
+
+1. **在你自己的电脑上（约半天）：**试运行示例，写好文字，把结果转成页面数据，检查，构建页面。
+2. **在运行所在的电脑上（约一小时）：**把页面复制过去，启动三个小服务（页面服务、状态写出、隧道），从外部检查，
+   然后向 GeoForge 申请卡片。
+
+现在就可以试运行示例（需要 Python 3.8+ 和 Node 18+）：
 
 ```
 python3 tools/make_example_data.py    # 生成示例数据（已明确标注为虚构）到 app/public/data/
-cd app && npm ci && npm run dev      # 需要 Node 18+；打开 http://127.0.0.1:8870/
+(cd app && npm ci && npm run dev)    # 打开 http://127.0.0.1:8870/
 ```
 
 ## 内容
@@ -20,25 +48,17 @@ cd app && npm ci && npm run dev      # 需要 Node 18+；打开 http://127.0.0.1
 | --- | --- |
 | `app/` | 页面（React + Leaflet + TypeScript，用 Vite 构建） |
 | `tools/csv_to_data.py` | 把你的结果（两个 CSV 文件）转成页面数据 |
-| `tools/make_example_data.py` | 生成示例数据：请按其格式编写自己的数据流程 |
-| `tools/check_data.py` | 发布前检查数据文件夹 |
+| `tools/check_data.py` | 发布前检查数据 |
 | `tools/status_writer.py` | 每 60 秒写出运行状态 |
+| `tools/serve.py` | 在本机按正确的响应头提供页面和数据 |
+| `tools/make_example_data.py` | 生成虚构的示例数据 |
 | `docs/TUTORIAL.zh.md` | 从空电脑到页面和卡片上线的每一步 |
+| `docs/HOSTING.md` | 获得公开地址的三种方式，以及响应头 |
 | `docs/DATA_FORMAT.md` | 页面读取的全部文件和字段 |
 | `docs/GLOBAL_RUNS_FEED.md` | 全球运行页面上的卡片及状态规则 |
-| `docs/HOSTING.md` | 构建、nginx、响应头、检查 |
 | `docs/STYLE.md` | 外观、用词及可公开的内容 |
 | `docs/CHECKLIST.md` | 上线前检查清单 |
 
-## 上线步骤
-
-1. 运行示例，阅读 `docs/DATA_FORMAT.md`。
-2. 让你的数据流程写出相同格式的文件（先做中国；扩展到全球不需要改代码）。
-3. 在 `manifest.json` 中修改文字和数值；页面代码只在 `docs/STYLE.md` 允许的地方修改。
-4. 部署（`docs/HOSTING.md`），启动状态写出脚本，完成 `docs/CHECKLIST.md`。
-5. 把页面地址和一张卡片图片发给 GeoForge。我们检查后把你的卡片加入全球运行页面。
-
-说明：教程有中文版，其他文档正文为英文；字段名和命令与中文无关，可直接照用。用词要求：KI agents 译为“知识基础设施智能体”。
-如在中国大陆服务器上用域名公开网站，需要 ICP 备案。
+说明：教程有中文版，其他文档正文为英文；字段名和命令可直接照用。用词要求：KI agents 译为“知识基础设施智能体”。
 
 问题和修复：请在本仓库提交 issue。

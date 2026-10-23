@@ -1,5 +1,17 @@
 # Changes
 
+## 1.2.0 (2026-10-23)
+
+- New default way to go online: everything runs on the computer where your run is, and a Cloudflare tunnel carries
+  the page to an address GeoForge gives you (`https://<name>.geoforgehhu.com`). No public IP, open port, domain or
+  certificate needed.
+- tools/serve.py: serves the page and data on 127.0.0.1 with the right headers (no folder listings, no *.tmp files).
+- TUTORIAL (EN + 中文) rewritten in two parts: A. make the page (steps 1–7), B. put it online (steps 8–13), with
+  systemd services for the page server, the status writer and the tunnel (its key kept in a file only root can read).
+- HOSTING.md: the three ways (address from GeoForge, your own Cloudflare tunnel, your own nginx server), the headers,
+  and what to do when the run is on another computer.
+- README, CHECKLIST and GLOBAL_RUNS_FEED.md follow the new way.
+
 ## 1.1.0 (2026-10-22)
 
 - docs/TUTORIAL.md and docs/TUTORIAL.zh.md: the full walk-through, from an empty computer to a live page and a Global Runs card.

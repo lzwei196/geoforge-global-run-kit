@@ -67,7 +67,7 @@ reused by another process would look alive.
 ## What your server must send
 
 The Global Runs page runs in the visitor's browser on `geoforgehhu.com` and reads your files from your address, so
-`manifest.json` and every `live.json` need these headers (see `HOSTING.md` for the nginx lines):
+`manifest.json` and every `live.json` need these headers. `tools/serve.py` sends them; for nginx see `HOSTING.md`, way 3:
 
 ```
 Access-Control-Allow-Origin: https://geoforgehhu.com
@@ -79,9 +79,11 @@ show the `Access-Control-Allow-Origin` line.
 
 ## Joining
 
-1. Agree your `project_id` with GeoForge.
-2. Publish your page and data (`HOSTING.md`), pass `tools/check_data.py`, and run `tools/status_writer.py`.
-3. Send GeoForge your page address and one picture for the card: JPG, 1200 × 800 px, under 300 KB, no text on it.
+1. Agree your `project_id` with GeoForge, and get your address (`TUTORIAL.md`, step 11: an address under
+   geoforgehhu.com with a tunnel key, or your own address from `HOSTING.md`).
+2. Publish your page and data, pass `tools/check_data.py`, and run `tools/status_writer.py`.
+3. Send GeoForge your page address, one picture for the card (JPG, 1200 × 800 px, under 300 KB, no text on it) and
+   the card text in English and Chinese (`TUTORIAL.md`, step 13).
 4. GeoForge checks your files for a day, reviews the card with you in both languages, then adds it.
 
 To take the card down, set every run to `finished` or `stopped` and tell GeoForge; it is removed the same day.
