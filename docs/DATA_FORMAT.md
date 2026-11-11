@@ -42,7 +42,7 @@ The top part is the Global Runs feed (see `GLOBAL_RUNS_FEED.md`); `page` holds w
 | `page.method` | text, ≤ 400 | satellite, track, processing steps, in plain words |
 | `page.period` | `["YYYY-MM-DD", "YYYY-MM-DD"]` | first and last image date |
 | `page.values` | list | the values a reader can colour the map by (below) |
-| `page.default_value` | a value id | the map's first colour; a dam with `null` here counts as "not processed yet" |
+| `page.default_value` | a value id | the map's first colour. A `null` is drawn as “no outward number”; it is not treated as zero, and it is not by itself “not processed”. When dam details include `processing_class`, the page counts displayed / actually processed / queued-only from that field instead of from how many colour values are filled in |
 | `page.fields` | list | plain details shown for each dam: `{"id", "name": text, "unit"?}` |
 | `page.series` | object | `{"unit": "mm", "what": text, "tile_deg": 5}`; `tile_deg` is a whole number that divides 180 (1, 2, 3, 5, 10, …) |
 
@@ -97,6 +97,26 @@ a dam at 30.82° N, 111.00° E with `tile_deg` 5 lives in `series/30_110.json`; 
 - `t`: image dates, oldest first. `d`: displacement in `page.series.unit` (same length; `null` for a missing date).
 - `e`: optional ± error, same length. The chart draws it as a light band.
 - Keep one file under about 20 MB; if a square gets too big, use a smaller whole `tile_deg` (e.g. 2 or 1).
+- The page looks up a series by the stable dam id, then by `fields.export` in the same square. A missing file or a missing key is an empty series, not a made-up line.
+
+## dam_detail/<id>/info.json (optional)
+
+One JSON object per dam. The page tries `dam_detail/<stable id>/info.json`, then `dam_detail/<fields.export>/info.json`.
+Either file is enough. It does not invent a rate, a cloud map, or a time series when those fields are null.
+
+Fields the page reads, when present:
+
+| Field | Meaning |
+| --- | --- |
+| `processing_class` | `actually_processed` or `draft_queued_only`. This is the processed / queued count. A queued dam is not counted as processed |
+| `science_acceptance_status` | the source status, shown as written (`待验收`, `已数值核验_现场验证未建立`, `质量未通过`, `仅排队草稿`, `多窗口并存_不可推广全坝`, or any other token unchanged) |
+| `field_validation` | shown as written. `not_established` stays “field validation not established” |
+| `viewer_layer` | `main`, `diag` or `draft`: which display layer the pin uses. It is not an acceptance pass, and a diagnostic pin is not moved to main |
+| `scopes` | every batch / window / orbit record, including ones that failed or are diagnostic. The page does not drop or merge them |
+| `images` | relative paths under `data/`, or empty. A null or missing file is an empty state. No picture is invented |
+| `points` | monitoring or reference points, or an empty list |
+
+`deployment.json` sits next to `index.html`, not in `data/`. It only says whether this copy is a local preview (`local_only` or `unpublished`) and the path of the separate progress page (`progress_href`). It does not record scientific acceptance.
 
 ## runs/<run_id>/live.json
 
@@ -108,5 +128,5 @@ How one run is doing right now. Write it every 60 seconds; see `GLOBAL_RUNS_FEED
 The page is built for data that change while people look at it:
 
 - `live.json` is read every 30 seconds; `manifest.json` every 2 minutes.
-- When `manifest.updated_at` changes, the page reads `dams.json` again and forgets the series it had loaded.
+- When `manifest.updated_at` changes, the page reads `dams.json` again and forgets the series and dam details it had loaded.
 - So the order for one update is: write series files, write `dams.json`, then write `manifest.json` with a new `updated_at` last.

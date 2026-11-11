@@ -90,7 +90,7 @@ cp app/public/data/manifest.json my_manifest.json
 6. **`page.region`、`page.method`、`page.period`**：范围、用平实语言写的方法（卫星、轨道、处理步骤）、第一张和最后一张影像的日期。
 7. **`page.values`**：读者可以用来着色的数值。合适就保留 `rate` 和 `total`；可以增删。
    形变用 `"scale": "diverging"`（0 在中间）。分类数值用 `"kind": "cat"` 加 `classes`。
-8. **`page.default_value`**：地图默认的数值。这一项没有值的大坝算作“尚未处理”。
+8. **`page.default_value`**：地图默认的数值。缺的数字画成“无对外数字”，不当成 0。只有坝详情里没有 `processing_class` 时，缺值才不计入“已处理”。有该字段时，页面按它分别计实际已处理和仅排队。
 9. **`page.fields`**：每座大坝显示的普通信息（坝高、建成年份、所在河流……）。
 10. **`page.series`**：时间序列的单位和名称。中国范围的 `tile_deg` 保持 5 即可。
 

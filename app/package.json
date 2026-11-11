@@ -1,11 +1,12 @@
 {
   "name": "geoforge-global-run-page",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 8870",
     "build": "tsc --noEmit && vite build",
+    "test:status": "esbuild status.test.ts --bundle --platform=node --format=esm --outfile=/tmp/status.test.mjs && node --test /tmp/status.test.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 8870"
   },
   "dependencies": {
