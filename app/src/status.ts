@@ -119,3 +119,28 @@ export function progressHref(dep: DeploymentMeta | null | undefined): string | n
   if (typeof h !== 'string' || !h.startsWith('/') || h.startsWith('//')) return null
   return h
 }
+
+// Same-origin diagnostic page only. The string must match this pattern exactly,
+// and also must not start with // or contain "..", "\", "://", "?" or "#".
+export const DIAGNOSTIC_PAGE_HREF_PATTERN = '^/diagnostics/[A-Za-z0-9][A-Za-z0-9._-]+/?$'
+const DIAGNOSTIC_PAGE_HREF = new RegExp(DIAGNOSTIC_PAGE_HREF_PATTERN)
+
+export function diagnosticPageHref(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  if (value.startsWith('//')) return null
+  if (!value.startsWith('/diagnostics/')) return null
+  if (value.includes('..') || value.includes('\\') || value.includes('://')) return null
+  if (value.includes('?') || value.includes('#')) return null
+  // `$` also matches before a final line break. The whole string has to be the path.
+  const matched = value.match(DIAGNOSTIC_PAGE_HREF)
+  if (!matched || matched[0] !== value) return null
+  return value
+}
+
+// The label is plain text. Missing text, or anything that looks like HTML, uses the page's own wording.
+export function diagnosticPageLabel(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback
+  const text = value.trim()
+  if (!text || /[<>]/.test(text) || /[\u0000-\u001f\u007f]/.test(text)) return fallback
+  return text
+}

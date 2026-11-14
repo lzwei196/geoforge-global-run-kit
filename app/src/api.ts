@@ -53,6 +53,9 @@ export type DamInfo = {
   old_28_point_ids?: string[] | null
   images?: { velocity?: string | null; cumulative?: string | null } | null
   no_cumulative?: boolean; points?: DamPoint[] | null; scopes?: Scope[] | null
+  // Optional link to an already published page. Not a rate, a cloud map, or an acceptance claim.
+  diagnostic_page_href?: string | null
+  diagnostic_page_label?: string | null
 }
 export type Deployment = {
   surface?: string; local_only?: boolean; unpublished?: boolean

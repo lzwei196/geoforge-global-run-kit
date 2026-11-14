@@ -4,7 +4,7 @@ import type { Lang, Words } from './i18n'
 import { fieldLabel, layerLabel, processingLabel, scienceLabel, tr } from './i18n'
 import { SeriesChart } from './Chart'
 import { fmt, stateOf, when } from './format'
-import { isPublicDataPath, scopesForDisplay, showLocalOnlyNotice } from './status'
+import { diagnosticPageHref, diagnosticPageLabel, isPublicDataPath, scopesForDisplay, showLocalOnlyNotice } from './status'
 
 function Row({ k, v, note, valueId }: { k: string; v: React.ReactNode; note?: string; valueId?: string }) {
   return <div data-value-id={valueId}><dt>{k}</dt><dd>{v}{note && <span className="note">{note}</span>}</dd></div>
@@ -76,6 +76,7 @@ export function DamPanel({ i, dams, m, s, info, lang, w }: {
   const losMissing = los === null || los === undefined
   const loaded = info && info !== 'loading' ? info : null
   const scopes = scopesForDisplay(loaded?.scopes)
+  const diagnosticHref = diagnosticPageHref(loaded?.diagnostic_page_href)
   return (
     <>
       <div className="panel-head"><div><div className="eyebrow">{w.damEye}</div><h2>{name}<small>{dams.id[i]} · {dams.lat[i].toFixed(3)}°, {dams.lon[i].toFixed(3)}°</small></h2></div></div>
@@ -83,6 +84,7 @@ export function DamPanel({ i, dams, m, s, info, lang, w }: {
         : !loaded ? <div className="empty" data-detail="missing">{w.noDetail}</div>
         : <div className={`status-banner ${toneOf(loaded)}`} data-processing={loaded.processing_class ?? ''} data-acceptance={loaded.science_acceptance_status ?? ''} data-layer={loaded.viewer_layer ?? ''}>
             {loaded.label && <div className="status-label">{loaded.label}</div>}
+            {diagnosticHref && <a className="diagnostic-page-link" href={diagnosticHref} data-diagnostic-page={diagnosticHref}>{diagnosticPageLabel(loaded.diagnostic_page_label, w.diagnosticLink)}</a>}
             <div><b>{w.acceptance}.</b> {scienceLabel(loaded.science_acceptance_status, lang)}</div>
             <div><b>{w.processing}.</b> {processingLabel(loaded.processing_class, lang)}</div>
             <div><b>{w.fieldVal}.</b> {fieldLabel(loaded.field_validation, lang)}</div>

@@ -3,7 +3,8 @@ import test from 'node:test'
 import { NO_VALUE, stateOf } from './src/format.ts'
 import { words } from './src/i18n.ts'
 import {
-  colorsFor, countByProcessing, detailAliases, detailCandidates, formatMeasured, heroCounts,
+  DIAGNOSTIC_PAGE_HREF_PATTERN, colorsFor, countByProcessing, detailAliases, detailCandidates,
+  diagnosticPageHref, diagnosticPageLabel, formatMeasured, heroCounts,
   isPublicDataPath, legacyProcessed, progressHref, scopesForDisplay, seriesFromTile, showLocalOnlyNotice,
 } from './src/status.ts'
 
@@ -88,6 +89,34 @@ test('deployment metadata does not claim validation and only allows a site path'
   assert.equal(isPublicDataPath('/opt/internal/velocity.png'), false)
   assert.equal(isPublicDataPath('../secret.png'), false)
   assert.equal(isPublicDataPath(null), false)
+})
+
+test('a diagnostic page link is optional and only a same-origin /diagnostics path', () => {
+  assert.equal(DIAGNOSTIC_PAGE_HREF_PATTERN, '^/diagnostics/[A-Za-z0-9][A-Za-z0-9._-]+/?$')
+  assert.equal(diagnosticPageHref('/diagnostics/pubugou-pack'), '/diagnostics/pubugou-pack')
+  assert.equal(diagnosticPageHref('/diagnostics/Ab.cd_1-2/'), '/diagnostics/Ab.cd_1-2/')
+  assert.equal(diagnosticPageHref('/diagnostics/a1'), '/diagnostics/a1')
+  const rejected = [
+    undefined, null, 1, '', '   ',
+    '/diagnostics/a', '/diagnostics/', '/diagnostics', 'diagnostics/pack',
+    '//diagnostics/pack', '//evil.test/diagnostics/pack',
+    '/diagnostics/../secret', '/diagnostics/foo/../bar', '/diagnostics/foo..bar', '/diagnostics/foo\\bar',
+    '/diagnostics/foo/bar', '/diagnostics/foo//', '/diagnostics//pack',
+    'https://example.test/diagnostics/pack', 'http://example.test/diagnostics/pack',
+    '/diagnostics/pack?x=1', '/diagnostics/pack#frag', '/diagnostics/pack/?q=1',
+    '/progress/', '/diagnostics/pack pack', ' /diagnostics/pack', '/diagnostics/pack ',
+    '/Diagnostics/pack', '/diagnostics/.pack', '/diagnostics/-pack', '/diagnostics/pack%2e%2e',
+    '/diagnostics/pack\n', '/diagnostics/pack\r', '/diagnostics/pack\u2028',
+  ]
+  for (const bad of rejected) assert.equal(diagnosticPageHref(bad), null, String(bad))
+  assert.equal(diagnosticPageHref(undefined), null)
+  assert.equal(diagnosticPageLabel(undefined, 'fallback'), 'fallback')
+  assert.equal(diagnosticPageLabel(null, 'fallback'), 'fallback')
+  assert.equal(diagnosticPageLabel('  ', 'fallback'), 'fallback')
+  assert.equal(diagnosticPageLabel('<b>hi</b>', 'fallback'), 'fallback')
+  assert.equal(diagnosticPageLabel('see <pack>', 'fallback'), 'fallback')
+  assert.equal(diagnosticPageLabel('line\nbreak', 'fallback'), 'fallback')
+  assert.equal(diagnosticPageLabel('  Independent note  ', 'fallback'), 'Independent note')
 })
 
 test('a live feed without done is not shown as 100 percent', () => {

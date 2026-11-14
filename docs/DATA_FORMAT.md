@@ -113,8 +113,10 @@ Fields the page reads, when present:
 | `field_validation` | shown as written. `not_established` stays “field validation not established” |
 | `viewer_layer` | `main`, `diag` or `draft`: which display layer the pin uses. It is not an acceptance pass, and a diagnostic pin is not moved to main |
 | `scopes` | every batch / window / orbit record, including ones that failed or are diagnostic. The page does not drop or merge them |
-| `images` | relative paths under `data/`, or empty. A null or missing file is an empty state. No picture is invented |
+| `images` | relative paths under `data/`, or empty. A null or missing file is an empty state. No picture is invented. A diagnostic page is not loaded as a velocity or cumulative cloud map |
 | `points` | monitoring or reference points, or an empty list |
+| `diagnostic_page_href` | optional. When present, a link is shown only if the value is a same-origin path that starts with `/diagnostics/`, does not start with `//`, contains no `..`, `\`, `://`, `?` or `#`, and matches `^/diagnostics/[A-Za-z0-9][A-Za-z0-9._-]+/?$`. Any other value is ignored. The page does not open or embed that address by itself |
+| `diagnostic_page_label` | optional plain text for that link. HTML is not used. If the text is missing, the page uses its own wording: an independent diagnostic display, not an official rate layer, and not scientifically accepted |
 
 `deployment.json` sits next to `index.html`, not in `data/`. It only says whether this copy is a local preview (`local_only` or `unpublished`) and the path of the separate progress page (`progress_href`). It does not record scientific acceptance.
 
