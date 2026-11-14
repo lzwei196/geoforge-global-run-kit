@@ -94,7 +94,7 @@ Open `my_manifest.json` and change it:
    and the first and last image date.
 7. **`page.values`**: what a reader can colour the map by. Keep `rate` and `total` if they suit your data; add or remove values.
    Use `"scale": "diverging"` for displacement (0 in the middle). For a category, use `"kind": "cat"` with `classes`.
-8. **`page.default_value`**: the value the map starts with. A dam with no value here counts as "not processed yet".
+8. **`page.default_value`**: the value the map starts with. A missing number is drawn as “no outward number”, not as zero. It counts as “not processed” only when the dam details have no `processing_class`. If they do, the page counts actually processed and queued-only from that field.
 9. **`page.fields`**: plain details shown for each dam (height, year built, river, ...).
 10. **`page.series`**: the unit and name of your time series. Keep `tile_deg` at 5 for China.
 

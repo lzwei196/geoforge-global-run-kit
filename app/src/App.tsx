@@ -1,7 +1,8 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { clearSeries, getJSON, loadSeries, type Dams, type Live, type Manifest, type Series } from './api'
+import { clearDetails, clearSeries, getJSON, loadDeployment, loadDetail, loadSeries, type DamInfo, type Dams, type Deployment, type Live, type Manifest, type Series } from './api'
 import { firstLang, hubUrl, saveLang, tr, words, type Lang } from './i18n'
-import { CLASS_COLORS, NO_VALUE, RANK, divColor, fmt, range, seqColor, stateOf, when } from './format'
+import { CLASS_COLORS, NO_VALUE, RANK, divColor, fmt, seqColor, stateOf, when } from './format'
+import { colorsFor, detailAliases, detailCandidates, heroCounts, legacyProcessed, progressHref } from './status'
 import { MapView } from './MapView'
 import { DamPanel, ProjectPanel } from './Panels'
 
@@ -29,6 +30,8 @@ export default function App() {
   const [q, setQ] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
+  const [infos, setInfos] = useState<(DamInfo | null)[] | null>(null)
+  const [deployment, setDeployment] = useState<Deployment | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const stamp = useRef<string | null>(null)
   const openId = useRef<string | null>(null)                    // a slow series read for an earlier dam must not win
@@ -42,11 +45,22 @@ export default function App() {
       setM(mm); setErr(null)
       setValueId(v => v && mm.page.values.some(x => x.id === v) ? v : mm.page.default_value)
       if (stamp.current !== mm.updated_at) {
-        return getJSON<Dams>('dams.json').then(d => { stamp.current = mm.updated_at; clearSeries(); setDams(d) })
+        return getJSON<Dams>('dams.json').then(d => { stamp.current = mm.updated_at; clearSeries(); clearDetails(); setDams(d) })
       }
     }).catch(e => setErr(String(e.message || e)))
   }, [])
   useEffect(() => { loadData(); const t = setInterval(loadData, DATA_EVERY_MS); return () => clearInterval(t) }, [loadData])
+  useEffect(() => { loadDeployment().then(setDeployment) }, [])
+
+  // per-dam status from info.json (stable id, then export alias). Not inferred from the colour layer.
+  useEffect(() => {
+    if (!dams) { setInfos(null); return }
+    let cancel = false
+    setInfos(null)
+    Promise.all(dams.id.map((id, i) => loadDetail(detailCandidates(id, dams.fields.export?.[i]))))
+      .then(rows => { if (!cancel) setInfos(rows) })
+    return () => { cancel = true }
+  }, [dams])
 
   // run status: every 30 s; a run without a readable file shows "no status" (never "running")
   const runIds = m?.runs.map(r => r.run_id).join('|') ?? ''
@@ -61,13 +75,7 @@ export default function App() {
   const vdef = m?.page.values.find(v => v.id === valueId) ?? null
   const scale = useMemo(() => {
     if (!dams || !vdef) return null
-    const vals = dams.values[vdef.id] ?? []
-    if (vdef.kind === 'cat') {
-      const nc = vdef.classes?.length ?? 0
-      return { colors: dams.id.map((_, i) => { const v = vals[i]; return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < nc ? CLASS_COLORS[v % CLASS_COLORS.length] : NO_VALUE }), lo: 0, hi: 0 }
-    }
-    const div = vdef.scale === 'diverging', [lo, hi] = range(vals, div), f = div ? divColor : seqColor
-    return { colors: dams.id.map((_, i) => { const v = vals[i]; return typeof v === 'number' && Number.isFinite(v) ? f((v - lo) / (hi - lo)) : NO_VALUE }), lo, hi }
+    return colorsFor(dams.values[vdef.id] ?? [], { kind: vdef.kind, classes: vdef.classes?.length ?? 0, scale: vdef.scale })
   }, [dams, vdef])
 
   const sel = useMemo(() => { if (!dams || selId === null) return null; const i = dams.id.indexOf(selId); return i < 0 ? null : i }, [dams, selId])
@@ -77,10 +85,14 @@ export default function App() {
     const i = dams.id.indexOf(selId)
     if (i < 0) { openId.current = null; setSelId(null); setSeries(null); return }
     setSeries('loading')
-    loadSeries(selId, dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(s => { if (openId.current === selId) setSeries(s) }).catch(() => { if (openId.current === selId) setSeries('error') })
+    loadSeries(dams.lat[i], dams.lon[i], m.page.series.tile_deg, detailCandidates(selId, dams.fields.export?.[i])).then(s => { if (openId.current === selId) setSeries(s) }).catch(() => { if (openId.current === selId) setSeries('error') })
   }, [dams])
-  // processed = the dam has the main value (page.default_value); a dam still waiting has null there
-  const processed = useMemo(() => dams && m ? (dams.values[m.page.default_value] ?? []).filter(v => v !== null && v !== undefined).length : 0, [dams, m])
+  const counts = useMemo(() => {
+    const displayed = dams?.id.length ?? 0
+    const legacy = dams && m ? legacyProcessed(dams.values[m.page.default_value]) : 0
+    if (!dams) return { displayed: 0, processed: null as number | null, queued: null as number | null, fromStatus: false }
+    return heroCounts(displayed, infos ? infos.map(info => info?.processing_class ?? null) : null, legacy)
+  }, [dams, m, infos])
   const top = useMemo(() => m ? m.runs.map(r => stateOf(lives[r.run_id] ?? null, w, lang, now)).sort((a, b) => RANK[a.key] - RANK[b.key])[0] ?? null : null, [m, lives, w, lang, now])
 
   const say = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3500) }
@@ -88,7 +100,7 @@ export default function App() {
     if (i === null || !dams || !m) return
     const id = dams.id[i]
     openId.current = id; setSelId(id); setSeries('loading')
-    loadSeries(id, dams.lat[i], dams.lon[i], m.page.series.tile_deg).then(s => { if (openId.current === id) setSeries(s) }).catch(() => { if (openId.current === id) setSeries('error') })
+    loadSeries(dams.lat[i], dams.lon[i], m.page.series.tile_deg, detailCandidates(id, dams.fields.export?.[i])).then(s => { if (openId.current === id) setSeries(s) }).catch(() => { if (openId.current === id) setSeries('error') })
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
   const search = () => {
@@ -101,6 +113,8 @@ export default function App() {
     } else if (t) {
       const low = t.toLowerCase()
       i = dams.id.findIndex(x => x.toLowerCase() === low)
+      if (i < 0 && dams.fields.export) i = dams.fields.export.findIndex(x => String(x ?? '').toLowerCase() === low)
+      if (i < 0 && infos) i = infos.findIndex(info => detailAliases(info).some(a => a.toLowerCase() === low))
       if (i < 0) i = dams.id.findIndex((_, k) => String(dams.name_en[k] ?? '').toLowerCase().includes(low) || String(dams.name_zh[k] ?? '').includes(t))
     }
     if (i < 0) return say(w.notFound)
@@ -113,6 +127,7 @@ export default function App() {
     <div className="app">
       <header className="top">
         <a className="back-link" href={hubUrl(lang)}>{w.back}</a>
+        {progressHref(deployment) && <a className="back-link progress-link" href={progressHref(deployment)!}>{w.progress}</a>}
         <div className="brand"><span className="logo" />{m ? tr(m.title, lang) : '…'}</div>
         <div className="search"><input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} placeholder={w.search} aria-label={w.search} /><button onClick={search}>{w.go}</button></div>
         <button className="lang-btn" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>{w.other}</button>
@@ -126,20 +141,21 @@ export default function App() {
           {m && vdef && <div className="map-side"><div className="layer-box">
             <div className="eyebrow">{w.colourBy}</div>
             <select value={vdef.id} onChange={e => setValueId(e.target.value)}>{m.page.values.map(v => <option key={v.id} value={v.id}>{tr(v.name, lang)}</option>)}</select>
-            {vdef.kind === 'num' && scale && <div className="legend-seq"><div className="ramp" style={{ background: `linear-gradient(90deg, ${[0, .17, .33, .5, .67, .83, 1].map(vdef.scale === 'diverging' ? divColor : seqColor).join(',')})` }} />
+            {vdef.kind === 'num' && scale && scale.finite > 0 && <div className="legend-seq"><div className="ramp" style={{ background: `linear-gradient(90deg, ${[0, .17, .33, .5, .67, .83, 1].map(vdef.scale === 'diverging' ? divColor : seqColor).join(',')})` }} />
               <div className="ends"><span>{fmt(scale.lo, 1, lang)}</span><span>{vdef.unit}</span><span>{fmt(scale.hi, 1, lang)}</span></div></div>}
             {vdef.kind === 'cat' && <div className="legend-cat">{(vdef.classes ?? []).map((c, k) => <span key={k}><i style={{ background: CLASS_COLORS[k % CLASS_COLORS.length] }} />{tr(c, lang)}</span>)}</div>}
-            <div className="legend-row"><i style={{ background: NO_VALUE }} />{w.noValue}</div>
+            <div className="legend-row"><i style={{ background: NO_VALUE }} />{vdef.kind === 'cat' ? w.missing : w.noValue}</div>
             {vdef.note && <div className="muted small">{tr(vdef.note, lang)}</div>}
           </div></div>}
           {hover && dams && <div className="hover" style={{ left: hover.x + 14, top: hover.y + 14 }}>
-            <b>{name(hover.i)}</b><br />{vdef && (() => { const v = dams.values[vdef.id]?.[hover.i] ?? null; return `${tr(vdef.name, lang)}: ${v === null ? w.noValue : vdef.kind === 'cat' ? tr(vdef.classes?.[v], lang) : `${fmt(v, 1, lang)} ${vdef.unit}`}` })()}
+            <b>{name(hover.i)}</b><br />{vdef && (() => { const v = dams.values[vdef.id]?.[hover.i] ?? null; return `${tr(vdef.name, lang)}: ${v === null ? (vdef.kind === 'cat' ? w.missing : w.noValue) : vdef.kind === 'cat' ? tr(vdef.classes?.[v], lang) : `${fmt(v, 1, lang)} ${vdef.unit}`}` })()}
           </div>}
           {toast && <div className="toast" onClick={() => setToast(null)}>{toast}</div>}
         </div>
-        <div className="hero-strip">
-          <div><b>{fmt(dams?.id.length, 0, lang)}</b><span>{w.dams}</span></div>
-          <div><b>{fmt(processed, 0, lang)}</b><span>{w.processed}</span></div>
+        <div className={`hero-strip${counts.fromStatus ? ' with-queued' : ''}`}>
+          <div data-count="displayed"><b>{dams ? fmt(counts.displayed, 0, lang) : '—'}</b><span>{counts.fromStatus ? w.displayed : w.dams}</span></div>
+          <div data-count="processed"><b>{counts.processed === null ? '…' : fmt(counts.processed, 0, lang)}</b><span>{counts.fromStatus ? w.processed : w.processedLegacy}</span></div>
+          {counts.fromStatus && <div data-count="queued"><b>{fmt(counts.queued, 0, lang)}</b><span>{w.queued}</span></div>}
           <div><b>{m ? `${m.page.period[0].slice(0, 4)}–${m.page.period[1].slice(0, 4)}` : '—'}</b><span>{w.period}</span></div>
           <div><b>{m ? when(m.updated_at, lang) : '—'}</b><span>{w.updated}</span></div>
           <div className="scroll-hint">{w.clickHint}</div>
@@ -147,10 +163,10 @@ export default function App() {
       </section>
       <main className="body">
         <div className="panel" ref={detailRef}><Guard>
-          {sel !== null && dams && m ? <DamPanel i={sel} dams={dams} m={m} s={series} lang={lang} w={w} />
+          {sel !== null && dams && m ? <DamPanel i={sel} dams={dams} m={m} s={series} info={infos ? infos[sel] ?? null : 'loading'} lang={lang} w={w} />
             : <div className="intro"><div className="eyebrow">{w.introEye}</div><h2>{w.introTitle}</h2><p className="muted">{w.introText}</p></div>}
         </Guard></div>
-        <div className="panel"><Guard>{m && <ProjectPanel m={m} lives={lives} lang={lang} w={w} />}</Guard></div>
+        <div className="panel"><Guard>{m && <ProjectPanel m={m} lives={lives} deployment={deployment} lang={lang} w={w} />}</Guard></div>
       </main>
       <footer className="foot">{m && <>{tr(m.group, lang)} · </>}<a href={hubUrl(lang)}>GeoForge Global Runs</a></footer>
     </div>

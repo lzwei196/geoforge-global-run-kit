@@ -32,7 +32,8 @@ export function stateOf(live: Live | null, w: Words, lang: Lang, now = Date.now(
     const bits = [w.running]
     if (live.step) bits.push(`${w.step}: ${tr(live.step, lang)}`)
     const p = live.progress
-    if (p && Number.isFinite(p.done)) bits.push(`${fmt(p.done, 0, lang)}${p.total ? ' / ' + fmt(p.total, 0, lang) : ''} ${tr(p.what, lang)}`)
+    // Only a real done count is shown. A missing done is not 100, and other progress fields are not a percent.
+    if (p && typeof p.done === 'number' && Number.isFinite(p.done)) bits.push(`${fmt(p.done, 0, lang)}${typeof p.total === 'number' && Number.isFinite(p.total) ? ' / ' + fmt(p.total, 0, lang) : ''} ${tr(p.what, lang)}`)
     return { key: 'live', text: bits.join(' · ') }
   }
   if (live.status === 'paused') return { key: 'paused', text: w.paused + (live.note ? ` · ${tr(live.note, lang)}` : '') }
